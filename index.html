@@ -158,118 +158,378 @@
   </div>
 
   <script>
-    // Wrap entire app in DOMContentLoaded so Vercel's static deploy / pre-render doesn't execute browser-only APIs
-    document.addEventListener('DOMContentLoaded', function(){
-      // ---------- sample data & storage ----------
-      const sampleData = {
-        clients: [{id:'client_01',name:'Acme Corp',location:{city:'Karachi',country:'Pakistan'},contactEmail:'contact@acme.com',phone:'+92-300-1234567',notes:'Repeat client'}],
-        projects: [{id:'proj_01',clientId:'client_01',title:'Upwork Website Redesign',description:'Landing page and portfolio redesign',startDate:'2025-09-01',endDate:null,budgetEarned:450,status:'Ongoing',tags:['web','design'],attachments:[{id:'file_01',name:'proposal.pdf',type:'application/pdf',size:234520,url:'/uploads/proposal.pdf',uploadedAt:'2025-09-02T12:00:00Z'}],createdAt:'2025-09-01T10:00:00Z',updatedAt:'2025-09-05T09:30:00Z'}]
-      };
+document.addEventListener('DOMContentLoaded', function () {
+  console.log('Pro CRM booting');
 
-      const STORAGE_KEY = 'procrm_v1';
-      function readStore(){ try{ const s = localStorage.getItem(STORAGE_KEY); if(s) return JSON.parse(s); return JSON.parse(JSON.stringify(sampleData)); }catch(e){ console.error('readStore',e); return JSON.parse(JSON.stringify(sampleData)); } }
-      function writeStore(obj){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); }catch(e){ console.error('writeStore',e); } }
+  // -------------------- sample data & storage --------------------
+  const sampleData = {
+    clients: [{
+      id: 'client_01',
+      name: 'Acme Corp',
+      location: { city: 'Karachi', country: 'Pakistan' },
+      contactEmail: 'contact@acme.com',
+      phone: '+92-300-1234567',
+      notes: 'Repeat client'
+    }],
+    projects: [{
+      id: 'proj_01',
+      clientId: 'client_01',
+      title: 'Upwork Website Redesign',
+      description: 'Landing page and portfolio redesign',
+      startDate: '2025-09-01',
+      endDate: null,
+      budgetEarned: 450,
+      status: 'Ongoing',
+      tags: ['web', 'design'],
+      attachments: [],
+      createdAt: '2025-09-01T10:00:00Z',
+      updatedAt: '2025-09-05T09:30:00Z'
+    }]
+  };
 
-      // IndexedDB helper with graceful fallback to in-memory store if IndexedDB not available
-      const DB_NAME = 'procrm_files_v1'; const STORE = 'files';
-      let inMemoryFileStore = [];
-      function openDb(){ return new Promise((resolve,reject)=>{ if(!('indexedDB' in window)){ resolve(null); return; } try{ const r = indexedDB.open(DB_NAME,1); r.onupgradeneeded = ()=>{ const db = r.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); }; r.onsuccess = ()=>resolve(r.result); r.onerror = ()=>reject(r.error); }catch(err){ reject(err); } }); }
+  const STORAGE_KEY = 'procrm_v1';
+  function readStore() {
+    try {
+      const s = localStorage.getItem(STORAGE_KEY);
+      return s ? JSON.parse(s) : JSON.parse(JSON.stringify(sampleData));
+    } catch (e) {
+      console.error('readStore error', e);
+      return JSON.parse(JSON.stringify(sampleData));
+    }
+  }
+  function writeStore(obj) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); }
+    catch (e) { console.error('writeStore error', e); }
+  }
 
-      async function saveFileBlob(fileMeta, arrayBuffer){ try{ const db = await openDb(); if(!db){ // fallback
-            inMemoryFileStore.push({...fileMeta, data: arrayBuffer}); return; }
-          const tx = db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put({...fileMeta, data: arrayBuffer}); return await new Promise((res,rej)=>{ tx.oncomplete = ()=>res(); tx.onerror = ()=>rej(tx.error); }); }catch(e){ console.error('saveFileBlob',e); throw e; } }
+  // IndexedDB fallback
+  const DB_NAME = 'procrm_files_v1';
+  const STORE = 'files';
+  let inMemoryFileStore = [];
+  function openDb() {
+    return new Promise((resolve, reject) => {
+      if (!('indexedDB' in window)) { resolve(null); return; }
+      try {
+        const r = indexedDB.open(DB_NAME, 1);
+        r.onupgradeneeded = () => {
+          const db = r.result;
+          if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' });
+        };
+        r.onsuccess = () => resolve(r.result);
+        r.onerror = () => reject(r.error);
+      } catch (err) { reject(err); }
+    });
+  }
+  async function saveFileBlob(meta, arr) {
+    try {
+      const db = await openDb();
+      if (!db) { inMemoryFileStore.push({ ...meta, data: arr }); return; }
+      const tx = db.transaction(STORE, 'readwrite'); tx.objectStore(STORE).put({ ...meta, data: arr });
+      return await new Promise((res, rej) => { tx.oncomplete = () => res(); tx.onerror = () => rej(tx.error); });
+    } catch (e) { console.error('saveFileBlob', e); throw e; }
+  }
+  async function getFilesForProject(projectId) {
+    try {
+      const db = await openDb();
+      if (!db) return inMemoryFileStore.filter(x => x.projectId === projectId);
+      const tx = db.transaction(STORE, 'readonly'); const storeObj = tx.objectStore(STORE); const res = [];
+      return await new Promise((resolve, reject) => {
+        const cursor = storeObj.openCursor();
+        cursor.onsuccess = (ev) => {
+          const cur = ev.target.result;
+          if (!cur) { resolve(res); return; }
+          if (cur.value.projectId === projectId) res.push(cur.value);
+          cur.continue();
+        };
+        cursor.onerror = () => reject(cursor.error);
+      });
+    } catch (e) { console.error('getFilesForProject', e); return []; }
+  }
 
-      async function getFilesForProject(projectId){ try{ const db = await openDb(); if(!db){ return inMemoryFileStore.filter(x=>x.projectId===projectId); } const tx = db.transaction(STORE,'readonly'); const storeObj = tx.objectStore(STORE); const res = []; return await new Promise((resolve,reject)=>{ const cursor = storeObj.openCursor(); cursor.onsuccess = (ev)=>{ const cur = ev.target.result; if(!cur){ resolve(res); return; } if(cur.value.projectId === projectId) res.push(cur.value); cur.continue(); }; cursor.onerror = ()=>reject(cursor.error); }); }catch(e){ console.error('getFilesForProject',e); return []; } }
+  // -------------------- UI helpers & state --------------------
+  let store = readStore();
+  const toasts = document.getElementById('toasts');
+  function toast(msg, ms = 3000) {
+    if (!toasts) return console.warn('toasts container missing, msg:', msg);
+    const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; toasts.appendChild(t);
+    setTimeout(() => { t.style.opacity = 0; setTimeout(() => t.remove(), 300); }, ms);
+  }
+  function escapeHtml(s) {
+    return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function setText(sel, txt) { const el = document.querySelector(sel); if (el) el.textContent = txt; }
 
-      // ---------- UI bindings ----------
-      const navButtons = document.querySelectorAll('.navbutton');
-      const views = {dashboard: document.getElementById('view-dashboard'), clients: document.getElementById('view-clients'), projects: document.getElementById('view-projects'), uploads: document.getElementById('view-uploads'), reports: document.getElementById('view-reports'), settings: document.getElementById('view-settings') };
-      const sidebar = document.getElementById('sidebar'); const toggleSidebar = document.getElementById('toggleSidebar');
-      const toasts = document.getElementById('toasts');
-      let store = readStore();
+  // Charts (guarded)
+  function renderEarningsChart() {
+    const canvas = document.getElementById('earningsChart'); if (!canvas) return;
+    try {
+      const ctx = canvas.getContext('2d');
+      const months = generateLastMonths(6); const labels = months.map(m => m.label);
+      const dataPoints = months.map(m => monthlyRevenueForKey(m.key));
+      if (window.earningsChart && typeof window.earningsChart.destroy === 'function') { try { window.earningsChart.destroy(); } catch (e) { /* ignore */ } }
+      window.earningsChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [{ label: 'Earnings', data: dataPoints, fill: true, tension: 0.3, backgroundColor: 'rgba(6,182,212,0.08)', borderColor: '#06b6d4', pointRadius: 3 }] },
+        options: { plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false }
+      });
+    } catch (err) { console.error('renderEarningsChart failed', err); }
+  }
 
-      // Safe dev hook (only in browser)
-      try{ window.procrmStore = store; }catch(e){}
+  function generateLastMonths(n) {
+    const months = []; const d = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+      const dt = new Date(d.getFullYear(), d.getMonth() - i, 1);
+      months.push({ key: dt.toISOString().slice(0, 7), label: dt.toLocaleString(undefined, { month: 'short', year: 'numeric' }) });
+    }
+    return months;
+  }
+  function monthlyRevenueForKey(monthKey) {
+    return store.projects.reduce((s, p) => {
+      const dateStr = p.createdAt || p.startDate || p.updatedAt;
+      if (!dateStr) return s;
+      const d = new Date(dateStr); if (isNaN(d)) return s;
+      const k = d.toISOString().slice(0, 7); return k === monthKey ? s + (Number(p.budgetEarned) || 0) : s;
+    }, 0);
+  }
 
-      navButtons.forEach(btn=>{ btn.addEventListener('click', ()=>{ navButtons.forEach(b=>b.classList.remove('active')); btn.classList.add('active'); showView(btn.dataset.view); }); btn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') btn.click(); }); });
-      function showView(name){ Object.values(views).forEach(v=>{ if(v) v.style.display='none'; }); const view = views[name]; if(view) view.style.display='block'; renderAll(); }
-      toggleSidebar.addEventListener('click', ()=>{ const collapsed = sidebar.classList.toggle('collapsed'); toggleSidebar.textContent = collapsed ? 'Expand' : 'Collapse'; });
+  // -------------------- Rendering --------------------
+  function renderDashboard() {
+    setText('#kpi-clients', store.clients.length);
+    setText('#kpi-active', store.projects.filter(p => p.status === 'Ongoing').length);
+    setText('#kpi-revenue', '$' + store.projects.reduce((s, p) => s + (Number(p.budgetEarned) || 0), 0));
+    renderActivity(); renderSnapshot(); renderEarningsChart();
+  }
+  function renderActivity() {
+    const feed = document.getElementById('activityFeed'); if (!feed) return; feed.innerHTML = '';
+    const recent = [...store.projects].sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).slice(0, 6);
+    recent.forEach(p => { const d = document.createElement('div'); d.className = 'muted'; d.textContent = `${p.title} — ${p.status} — $${p.budgetEarned || 0}`; feed.appendChild(d); });
+  }
+  function renderSnapshot() {
+    const snap = document.getElementById('projectsSnapshot'); if (!snap) return; snap.innerHTML = '';
+    const snapList = store.projects.slice(0, 6);
+    snapList.forEach(p => {
+      const el = document.createElement('div'); el.className = 'project-row';
+      el.innerHTML = `<div><strong>${escapeHtml(p.title)}</strong><div class='muted'>${escapeHtml(getClientName(p.clientId))} · ${p.tags ? escapeHtml((p.tags || []).join(', ')) : ''}</div></div><div class='muted'>$${p.budgetEarned || 0}</div>`;
+      snap.appendChild(el);
+    });
+  }
+  function getClientName(id) { const c = store.clients.find(x => x.id === id); return c ? c.name : ''; }
 
-      function toast(msg, ms=3000){ const t = document.createElement('div'); t.className='toast'; t.textContent = msg; toasts.appendChild(t); setTimeout(()=>{ t.style.opacity=0; setTimeout(()=>t.remove(),300); }, ms); }
+  function renderClients() {
+    const el = document.getElementById('clientsList'); if (!el) return; el.innerHTML = '';
+    store.clients.forEach(c => {
+      const row = document.createElement('div'); row.className = 'project-row';
+      row.innerHTML = `<div><strong>${escapeHtml(c.name)}</strong><div class='muted'>${escapeHtml(c.location?.city || '')}, ${escapeHtml(c.location?.country || '')}</div></div><div class='flex'><button class='btn ghost' data-id='${c.id}' data-action='edit-client'>Edit</button><button class='btn ghost' data-id='${c.id}' data-action='delete-client'>Delete</button></div>`;
+      el.appendChild(row);
+    });
+  }
 
-      // ---------- Dashboard & charts ----------
-      function renderAll(){ renderDashboard(); renderClients(); renderProjects(); renderReports(); }
-      function renderDashboard(){ const kClients = store.clients.length; const kActive = store.projects.filter(p=>p.status==='Ongoing').length; const revenue = store.projects.reduce((s,p)=>s + (Number(p.budgetEarned)||0),0); setText('#kpi-clients', kClients); setText('#kpi-active', kActive); setText('#kpi-revenue', '$'+revenue); renderActivity(); renderSnapshot(); renderEarningsChart(); }
-      function setText(sel, txt){ const el = document.querySelector(sel); if(el) el.textContent = txt; }
-      function renderActivity(){ const feed = document.getElementById('activityFeed'); if(!feed) return; feed.innerHTML=''; const recent = [...store.projects].sort((a,b)=> new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).slice(0,6); recent.forEach(p=>{ const d = document.createElement('div'); d.className='muted'; d.textContent = `${p.title} — ${p.status} — $${p.budgetEarned||0}`; feed.appendChild(d); }); }
-      function renderSnapshot(){ const snap = document.getElementById('projectsSnapshot'); if(!snap) return; snap.innerHTML=''; const snapList = store.projects.slice(0,6); snapList.forEach(p=>{ const el = document.createElement('div'); el.className='project-row'; el.innerHTML = `<div><strong>${escapeHtml(p.title)}</strong><div class='muted'>${escapeHtml(getClientName(p.clientId))} · ${p.tags ? escapeHtml((p.tags||[]).join(', ')):''}</div></div><div class='muted'>$${p.budgetEarned||0}</div>`; snap.appendChild(el); }); }
-      function generateLastMonths(n){ const months=[]; const d = new Date(); for(let i=n-1;i>=0;i--){ const dt = new Date(d.getFullYear(), d.getMonth()-i, 1); months.push({key: dt.toISOString().slice(0,7), label: dt.toLocaleString(undefined,{month:'short',year:'numeric'})}); } return months; }
-      function monthlyRevenueForKey(monthKey){ return store.projects.reduce((s,p)=>{ const dateStr = p.createdAt || p.startDate || p.updatedAt; if(!dateStr) return s; try{ const d = new Date(dateStr); if(isNaN(d)) return s; const k = d.toISOString().slice(0,7); if(k === monthKey) return s + (Number(p.budgetEarned)||0); return s; }catch(e){ return s; } },0); }
+  function renderProjects() {
+    const container = document.getElementById('projectsList'); if (!container) return; container.innerHTML = '';
+    const q = (document.getElementById('globalSearch')?.value || '').trim().toLowerCase();
+    const statusF = (document.getElementById('filterStatus')?.value || '').trim();
+    const sortBy = (document.getElementById('sortSelect')?.value || 'updatedAt');
+    let list = store.projects.slice();
+    if (q) list = list.filter(p => p.title.toLowerCase().includes(q) || (p.tags || []).join(' ').toLowerCase().includes(q) || getClientName(p.clientId).toLowerCase().includes(q));
+    if (statusF) list = list.filter(p => p.status.toLowerCase() === statusF.toLowerCase());
+    if (sortBy === 'budgetEarned') list.sort((a, b) => (Number(b.budgetEarned) || 0) - (Number(a.budgetEarned) || 0));
+    else list.sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
 
-      function renderEarningsChart(){ const canvas = document.getElementById('earningsChart'); if(!canvas) return; const ctx = canvas.getContext('2d'); const months = generateLastMonths(6); const labels = months.map(m=>m.label); const dataPoints = months.map(m=>monthlyRevenueForKey(m.key)); if(window.earningsChart && typeof window.earningsChart.destroy === 'function'){ try{ window.earningsChart.destroy(); }catch(e){ console.warn('chart destroy failed',e); } } try{ window.earningsChart = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Earnings', data: dataPoints, fill: true, tension: 0.3, backgroundColor: 'rgba(6,182,212,0.08)', borderColor: '#06b6d4', pointRadius: 3 }] }, options: { plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false, scales:{ x:{ grid:{display:false}, ticks:{ color: '#9aa4b2' } }, y:{ beginAtZero:true, ticks:{ color:'#9aa4b2' } } } } }); }catch(e){ console.error('renderEarningsChart', e); }
+    const PAGE_SIZE = 6;
+    let projectsPage = 1;
+    const total = list.length; const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const pageItems = list.slice((projectsPage - 1) * PAGE_SIZE, projectsPage * PAGE_SIZE);
+
+    pageItems.forEach(p => {
+      const row = document.createElement('div'); row.className = 'project-row';
+      const tags = (p.tags || []).slice(0, 3).join(', ');
+      row.innerHTML = `<div><strong>${escapeHtml(p.title)}</strong><div class='muted'>${escapeHtml(getClientName(p.clientId))} · ${escapeHtml(tags)}</div></div><div class='flex'><div class='status-chip status-${escapeHtml(p.status)}'>${escapeHtml(p.status)}</div><div class='muted'>$${p.budgetEarned || 0}</div><button class='btn ghost' data-id='${p.id}' data-action='edit-project'>Edit</button></div>`;
+      container.appendChild(row);
+    });
+    // pagination left intentionally simple in this delegated script
+  }
+
+  // -------------------- Event handling (delegation) --------------------
+  // Nav buttons - click handled directly
+  document.querySelectorAll('.navbutton').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.navbutton').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active'); showView(btn.dataset.view);
+    });
+  });
+
+  function showView(name) {
+    const views = { dashboard: document.getElementById('view-dashboard'), clients: document.getElementById('view-clients'), projects: document.getElementById('view-projects'), uploads: document.getElementById('view-uploads'), reports: document.getElementById('view-reports'), settings: document.getElementById('view-settings') };
+    Object.values(views).forEach(v => { if (v) v.style.display = 'none'; });
+    if (views[name]) views[name].style.display = 'block';
+    renderAll();
+  }
+
+  // Button hooks (static buttons)
+  document.getElementById('addProjectBtn')?.addEventListener('click', () => { openModal(projectFormHTML()); });
+  document.getElementById('addClientBtn')?.addEventListener('click', () => { openModal(clientFormHTML()); });
+  document.getElementById('exportBtn')?.addEventListener('click', exportCSV);
+  document.getElementById('clearAllBtn')?.addEventListener('click', () => {
+    if (confirm('Clear all local data?')) { store = { clients: [], projects: [] }; writeStore(store); toast('Local data cleared'); renderAll(); }
+  });
+
+  // Delegated click handler for dynamic buttons within lists (edit/delete)
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+    if (action === 'edit-client') {
+      const client = store.clients.find(c => c.id === id);
+      openModal(clientFormHTML(client));
+    } else if (action === 'delete-client') {
+      if (!confirm('Delete client?')) return;
+      store.clients = store.clients.filter(c => c.id !== id);
+      // optionally remove projects for that client
+      store.projects = store.projects.filter(p => p.clientId !== id);
+      writeStore(store); toast('Client deleted'); renderAll();
+    } else if (action === 'edit-project') {
+      const proj = store.projects.find(p => p.id === id);
+      openModal(projectFormHTML(proj));
+    } else if (action === 'delete-project') {
+      if (!confirm('Delete project?')) return;
+      store.projects = store.projects.filter(p => p.id !== id); writeStore(store); toast('Project deleted'); renderAll();
+    }
+  });
+
+  // Delegated submit handler for modal forms
+  document.addEventListener('submit', function (e) {
+    if (!e.target) return;
+    if (e.target.id === 'clientForm') {
+      e.preventDefault(); const f = new FormData(e.target);
+      const obj = { id: 'client_' + Date.now(), name: f.get('name'), location: { city: f.get('city'), country: f.get('country') }, contactEmail: f.get('contactEmail'), phone: f.get('phone'), notes: f.get('notes') };
+      store.clients.push(obj); writeStore(store); closeModal(); toast('Client saved'); renderAll();
+    } else if (e.target.id === 'projectForm') {
+      e.preventDefault(); const f = new FormData(e.target);
+      const id = 'proj_' + Date.now();
+      const obj = { id, clientId: f.get('clientId'), title: f.get('title'), description: f.get('description'), startDate: f.get('startDate') || '', endDate: f.get('endDate') || null, budgetEarned: Number(f.get('budgetEarned') || 0), status: f.get('status'), tags: (f.get('tags') || '').split(',').map(s => s.trim()).filter(Boolean), attachments: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      store.projects.push(obj); writeStore(store); closeModal(); toast('Project saved'); renderAll();
+    }
+  });
+
+  // -------------------- Modal / forms / upload handlers --------------------
+  const modal = document.getElementById('modalBackdrop'); const modalBody = document.getElementById('modalBody'); const closeModalBtn = document.getElementById('closeModal');
+  function openModal(html) { if (!modal || !modalBody) return; modalBody.innerHTML = html; modal.style.display = 'flex'; modal.setAttribute('aria-hidden', 'false'); const focusEl = modal.querySelector('input,button,select,textarea'); if (focusEl) focusEl.focus(); }
+  function closeModal() { if (!modal) return; modal.style.display = 'none'; modal.setAttribute('aria-hidden', 'true'); }
+
+  closeModalBtn?.addEventListener('click', closeModal);
+
+  function clientFormHTML(c) {
+    const data = c || { id: 'client_' + Date.now(), name: '', location: { city: '', country: '' }, contactEmail: '', phone: '', notes: '' };
+    return `<h3>${c ? 'Edit' : 'Add'} client</h3>
+      <form id="clientForm">
+        <div class="form-grid">
+          <label>Company name<input name="name" value="${escapeHtml(data.name)}" required></label>
+          <label>City<input name="city" value="${escapeHtml(data.location.city)}"></label>
+          <label>Country<input name="country" value="${escapeHtml(data.location.country)}"></label>
+          <label>Email<input name="contactEmail" value="${escapeHtml(data.contactEmail)}"></label>
+          <label>Phone<input name="phone" value="${escapeHtml(data.phone)}"></label>
+          <label style="grid-column:1/-1">Notes<textarea name="notes">${escapeHtml(data.notes)}</textarea></label>
+        </div>
+        <div style="margin-top:12px"><button type="submit" class="btn">Save client</button></div>
+      </form>`;
+  }
+
+  function projectFormHTML(p) {
+    const proj = p || { id: 'proj_' + Date.now(), clientId: '', title: '', description: '', startDate: '', endDate: '', budgetEarned: 0, status: 'Ongoing', tags: '' };
+    const clientOptions = store.clients.map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join('');
+    return `<h3>${p ? 'Edit' : 'Add'} project</h3>
+      <form id="projectForm">
+        <div class="form-grid">
+          <label>Client<select name="clientId" required><option value="">Select client</option>${clientOptions}</select></label>
+          <label>Title<input name="title" value="${escapeHtml(proj.title)}" required></label>
+          <label>Start date<input type="date" name="startDate" value="${proj.startDate || ''}"></label>
+          <label>End date<input type="date" name="endDate" value="${proj.endDate || ''}"></label>
+          <label>Budget earned<input type="number" name="budgetEarned" value="${proj.budgetEarned || 0}"></label>
+          <label>Status<select name="status"><option>Ongoing</option><option>Closed</option><option>Paused</option></select></label>
+          <label style="grid-column:1/-1">Description<textarea name="description">${escapeHtml(proj.description)}</textarea></label>
+          <label style="grid-column:1/-1">Tags (comma)<input name="tags" value="${proj.tags ? escapeHtml((proj.tags || []).join(', ')) : ''}"></label>
+        </div>
+        <div style="margin-top:12px"><button class="btn" type="submit">Save project</button></div>
+      </form>`;
+  }
+
+  // Upload handling (browse/drag)
+  const dropzone = document.getElementById('dropzone'); const fileInput = document.getElementById('fileInput'); const uploadList = document.getElementById('uploadList');
+  const ALLOWED = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'text/csv', 'image/jpeg', 'image/png', 'application/zip', 'application/msword'];
+  if (dropzone) {
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.style.borderColor = 'rgba(6,182,212,0.6)'; });
+    dropzone.addEventListener('dragleave', () => { dropzone.style.borderColor = ''; });
+    dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.style.borderColor = ''; handleFiles(e.dataTransfer.files); });
+  }
+  fileInput?.addEventListener('change', () => handleFiles(fileInput.files));
+  function handleFiles(list) {
+    if (!list) return;
+    for (const f of list) {
+      if (f.size > 10 * 1024 * 1024) { toast('File too large: ' + f.name); continue; }
+      if (!ALLOWED.includes(f.type) && !f.name.match(/\.docx$|\.xlsx$|\.zip$/i)) { toast('Unsupported file type: ' + f.name); continue; }
+      simulateUpload(f);
+    }
+  }
+  async function simulateUpload(file) {
+    const id = 'file_' + Date.now() + Math.random().toString(36).slice(2, 8);
+    const item = document.createElement('div'); item.className = 'file-item';
+    item.innerHTML = `<div><strong>${escapeHtml(file.name)}</strong><div class='muted'>${(file.size / 1024).toFixed(1)} KB</div></div><div style='width:220px'><div class='progress'><i></i></div></div>`;
+    uploadList?.appendChild(item);
+    const bar = item.querySelector('.progress > i');
+    let pct = 0; const step = Math.max(2, Math.round(100 / (5 + Math.random() * 5)));
+    const timer = setInterval(() => {
+      pct = Math.min(100, pct + step);
+      if (bar) bar.style.width = pct + '%';
+      if (pct >= 100) {
+        clearInterval(timer);
+        const reader = new FileReader();
+        reader.onload = async () => {
+          const arr = reader.result;
+          try { await saveFileBlob({ id, projectId: null, name: file.name, type: file.type, size: file.size, uploadedAt: new Date().toISOString() }, arr); toast('Uploaded: ' + file.name); }
+          catch (e) { toast('Upload failed: ' + file.name); }
+        };
+        reader.readAsArrayBuffer(file);
       }
+    }, 150);
+  }
 
-      // ---------- Clients ----------
-      function renderClients(){ const el = document.getElementById('clientsList'); if(!el) return; el.innerHTML=''; store.clients.forEach(c=>{ const row = document.createElement('div'); row.className='project-row'; row.innerHTML = `<div><strong>${escapeHtml(c.name)}</strong><div class='muted'>${escapeHtml(c.location?.city||'')}, ${escapeHtml(c.location?.country||'')}</div></div><div class='flex'><button class='btn ghost' data-id='${c.id}' data-action='edit-client'>Edit</button><button class='btn ghost' data-id='${c.id}' data-action='delete-client'>Delete</button></div>`; el.appendChild(row); }); }
-      function getClientName(id){ const c = store.clients.find(x=>x.id===id); return c? c.name : ''; }
+  // -------------------- CSV export --------------------
+  function exportCSV() {
+    try {
+      const hdr = ['id', 'clientId', 'title', 'description', 'startDate', 'endDate', 'budgetEarned', 'status', 'tags', 'createdAt', 'updatedAt'];
+      const rows = store.projects.map(p => hdr.map(h => '"' + String(p[h] || '').replace(/"/g, '""') + '"').join(','));
+      const csv = hdr.join(',') + "\n" + rows.join("\n");
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'projects.csv'; a.click(); URL.revokeObjectURL(url); toast('CSV exported');
+    } catch (e) { console.error('exportCSV', e); toast('Export failed'); }
+  }
 
-      // ---------- Projects ----------
-      let projectsPage = 1; const PAGE_SIZE = 6;
-      function renderProjects(){ const container = document.getElementById('projectsList'); if(!container) return; container.innerHTML=''; const q = (document.getElementById('globalSearch')?.value || '').trim().toLowerCase(); const statusF = (document.getElementById('filterStatus')?.value || '').trim(); const sortBy = (document.getElementById('sortSelect')?.value || 'updatedAt'); let list = store.projects.slice(); if(q) list = list.filter(p=> p.title.toLowerCase().includes(q) || (p.tags||[]).join(' ').toLowerCase().includes(q) || getClientName(p.clientId).toLowerCase().includes(q)); if(statusF) list = list.filter(p=>p.status.toLowerCase() === statusF.toLowerCase()); if(sortBy==='budgetEarned') list.sort((a,b)=>(Number(b.budgetEarned)||0)-(Number(a.budgetEarned)||0)); else list.sort((a,b)=> new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)); const total = list.length; const pages = Math.max(1,Math.ceil(total/PAGE_SIZE)); projectsPage = Math.min(projectsPage, pages); const pageItems = list.slice((projectsPage-1)*PAGE_SIZE, projectsPage*PAGE_SIZE); pageItems.forEach(p=>{ const row = document.createElement('div'); row.className='project-row'; const tags = (p.tags||[]).slice(0,3).join(', '); row.innerHTML = `<div><strong>${escapeHtml(p.title)}</strong><div class='muted'>${escapeHtml(getClientName(p.clientId))} · ${escapeHtml(tags)}</div></div><div class='flex'><div class='status-chip status-${escapeHtml(p.status)}'>${escapeHtml(p.status)}</div><div class='muted'>$${p.budgetEarned||0}</div><button class='btn ghost' data-id='${p.id}' data-action='edit-project'>Edit</button></div>`; container.appendChild(row); }); const pag = document.getElementById('pagination'); if(!pag) return; pag.innerHTML=''; if(pages>1){ const prev = document.createElement('button'); prev.className='btn ghost'; prev.textContent='Prev'; prev.disabled = projectsPage===1; prev.onclick=()=>{ projectsPage--; renderProjects(); }; pag.appendChild(prev); const info = document.createElement('div'); info.className='muted'; info.textContent = `Page ${projectsPage} / ${pages}`; pag.appendChild(info); const next = document.createElement('button'); next.className='btn ghost'; next.textContent='Next'; next.disabled = projectsPage===pages; next.onclick=()=>{ projectsPage++; renderProjects(); }; pag.appendChild(next); }
-      }
+  // -------------------- Render everything --------------------
+  function renderAll() { renderDashboard(); renderClients(); renderProjects(); renderReports(); }
+  function renderReports() {
+    const ctxEl = document.getElementById('statusChart'); if (!ctxEl) return;
+    try {
+      let statusChart = window._statusChart;
+      const counts = { Ongoing: 0, Closed: 0, Paused: 0 };
+      store.projects.forEach(p => counts[p.status] = (counts[p.status] || 0) + 1);
+      const data = Object.values(counts); const labels = Object.keys(counts);
+      if (statusChart && typeof statusChart.destroy === 'function') { try { statusChart.destroy(); } catch (e) { /* ignore */ } }
+      statusChart = new Chart(ctxEl.getContext('2d'), { type: 'pie', data: { labels, datasets: [{ data, backgroundColor: ['#06b6d4', '#16a34a', '#ef4444'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+      window._statusChart = statusChart;
+    } catch (e) { console.error('renderReports', e); }
+  }
 
-      // ---------- Uploads ----------
-      const dropzone = document.getElementById('dropzone'); const fileInput = document.getElementById('fileInput'); const uploadList = document.getElementById('uploadList');
-      const ALLOWED = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','text/csv','image/jpeg','image/png','application/zip','application/msword'];
-      if(dropzone){ dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.style.borderColor = 'rgba(6,182,212,0.6)'; }); dropzone.addEventListener('dragleave', ()=>{ dropzone.style.borderColor = ''; }); dropzone.addEventListener('drop', e=>{ e.preventDefault(); dropzone.style.borderColor=''; handleFiles(e.dataTransfer.files); }); }
-      if(fileInput) fileInput.addEventListener('change', ()=>handleFiles(fileInput.files));
-      function handleFiles(list){ if(!list) return; for(const f of list){ if(f.size > 10*1024*1024){ toast('File too large: '+f.name); continue } if(!ALLOWED.includes(f.type) && !f.name.match(/\.docx$|\.xlsx$|\.zip$/i)){ toast('Unsupported file type: '+f.name); continue } simulateUpload(f); } }
-      async function simulateUpload(file){ const id = 'file_'+Date.now()+Math.random().toString(36).slice(2,8); const item = document.createElement('div'); item.className='file-item'; item.innerHTML = `<div><strong>${escapeHtml(file.name)}</strong><div class='muted'>${(file.size/1024).toFixed(1)} KB</div></div><div style='width:220px'><div class='progress'><i></i></div></div>`; if(uploadList) uploadList.appendChild(item); const bar = item.querySelector('.progress > i'); let pct = 0; const step = Math.max(2, Math.round(100 / (5 + Math.random()*5)) ); const timer = setInterval(()=>{ pct = Math.min(100, pct + step); if(bar) bar.style.width = pct+'%'; if(pct>=100){ clearInterval(timer); const reader = new FileReader(); reader.onload = async ()=>{ const arr = reader.result; try{ await saveFileBlob({id,projectId:null,name:file.name,type:file.type,size:file.size,uploadedAt:new Date().toISOString()}, arr); toast('Uploaded: '+file.name); }catch(e){ toast('Upload failed: '+file.name); } }; reader.readAsArrayBuffer(file); } }, 150); }
+  // Initiate
+  showView('dashboard');
+  // Expose for debugging
+  window.procrm = { getStore: () => JSON.parse(JSON.stringify(store)), save: () => { writeStore(store); toast('Saved'); } };
 
-      // ---------- Modals & forms ----------
-      const modal = document.getElementById('modalBackdrop'); const modalBody = document.getElementById('modalBody'); const closeModal = document.getElementById('closeModal');
-      function openModal(html){ if(!modal || !modalBody) return; modalBody.innerHTML = html; modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); const focusEl = modal.querySelector('input,button,select,textarea'); if(focusEl) focusEl.focus(); }
-      function close(){ if(!modal) return; modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
-      if(closeModal) closeModal.addEventListener('click', close);
+  console.log('Pro CRM ready');
+});
+</script>
 
-      // Add client
-      const addClientBtn = document.getElementById('addClientBtn'); if(addClientBtn) addClientBtn.addEventListener('click', ()=>{ openModal(clientFormHTML()); document.getElementById('clientForm')?.addEventListener('submit', handleClientSave); });
-      function clientFormHTML(c){ const data = c || {id:'client_'+Date.now(),name:'',location:{city:'',country:''},contactEmail:'',phone:'',notes:''}; return `<h3>${c?'Edit':'Add'} client</h3><form id='clientForm'><div class='form-grid'><label>Company name<input name='name' value='${escapeHtml(data.name)}' required></label><label>City<input name='city' value='${escapeHtml(data.location.city)}'></label><label>Country<input name='country' value='${escapeHtml(data.location.country)}'></label><label>Email<input name='contactEmail' value='${escapeHtml(data.contactEmail)}'></label><label>Phone<input name='phone' value='${escapeHtml(data.phone)}'></label><label style='grid-column:1/-1'>Notes<textarea name='notes'>${escapeHtml(data.notes)}</textarea></label></div><div style='margin-top:12px'><button type='submit' class='btn'>Save client</button></div></form>`; }
-      function handleClientSave(e){ e.preventDefault(); const f = new FormData(e.target); const id = 'client_'+Date.now(); const obj = { id, name: f.get('name'), location:{city:f.get('city'), country:f.get('country')}, contactEmail:f.get('contactEmail'), phone:f.get('phone'), notes:f.get('notes') }; store.clients.push(obj); writeStore(store); close(); toast('Client saved'); renderAll(); }
-
-      // Add project
-      const addProjectBtn = document.getElementById('addProjectBtn'); if(addProjectBtn) addProjectBtn.addEventListener('click', ()=>{ openModal(projectFormHTML()); setTimeout(()=>{ document.getElementById('projectForm')?.addEventListener('submit', handleProjectSave); },50); });
-      function projectFormHTML(p){ const proj = p || {id:'proj_'+Date.now(),clientId:'',title:'',description:'',startDate:'',endDate:'',budgetEarned:0,status:'Ongoing',tags:''}; const clientOptions = store.clients.map(c=>`<option value='${c.id}'>${escapeHtml(c.name)}</option>`).join(''); return `<h3>${p?'Edit':'Add'} project</h3><form id='projectForm'><div class='form-grid'><label>Client<select name='clientId' required><option value=''>Select client</option>${clientOptions}</select></label><label>Title<input name='title' value='${escapeHtml(proj.title)}' required></label><label>Start date<input type='date' name='startDate' value='${proj.startDate||''}'></label><label>End date<input type='date' name='endDate' value='${proj.endDate||''}'></label><label>Budget earned<input type='number' name='budgetEarned' value='${proj.budgetEarned||0}'></label><label>Status<select name='status'><option>Ongoing</option><option>Closed</option><option>Paused</option></select></label><label style='grid-column:1/-1'>Description<textarea name='description'>${escapeHtml(proj.description)}</textarea></label><label style='grid-column:1/-1'>Tags (comma)<input name='tags' value='${proj.tags? escapeHtml((proj.tags||[]).join(', ')) : '' }'></label></div><div style='margin-top:12px'><button class='btn' type='submit'>Save project</button></div></form>`; }
-      function handleProjectSave(e){ e.preventDefault(); const f = new FormData(e.target); const id = 'proj_'+Date.now(); const obj = { id, clientId:f.get('clientId'), title:f.get('title'), description:f.get('description'), startDate:f.get('startDate')||'', endDate:f.get('endDate')||null, budgetEarned: Number(f.get('budgetEarned')||0), status:f.get('status'), tags: (f.get('tags')||'').split(',').map(s=>s.trim()).filter(Boolean), attachments:[], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; store.projects.push(obj); writeStore(store); close(); toast('Project saved'); renderAll(); }
-
-      // Export CSV
-      const exportBtn = document.getElementById('exportBtn'); if(exportBtn) exportBtn.addEventListener('click', ()=>{ const hdr = ['id','clientId','title','description','startDate','endDate','budgetEarned','status','tags','createdAt','updatedAt']; const rows = store.projects.map(p=> hdr.map(h=> '"'+String(p[h]||'').replace(/"/g,'""')+'"').join(',')); const csv = hdr.join(',') + "
-" + rows.join("
-"); const blob = new Blob([csv],{type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='projects.csv'; a.click(); URL.revokeObjectURL(url); toast('CSV exported'); });
-
-      // Clear data
-      const clearBtn = document.getElementById('clearAllBtn'); if(clearBtn) clearBtn.addEventListener('click', ()=>{ if(confirm('Clear all local data?')){ store = {clients:[],projects:[]}; writeStore(store); toast('Local data cleared'); renderAll(); } });
-
-      // Reports chart
-      let statusChart = null;
-      function renderReports(){ const ctx = document.getElementById('statusChart'); if(!ctx) return; const counts = {Ongoing:0,Closed:0,Paused:0}; store.projects.forEach(p=> counts[p.status] = (counts[p.status]||0)+1 ); const data = Object.values(counts); const labels = Object.keys(counts); if(statusChart && typeof statusChart.destroy === 'function'){ try{ statusChart.destroy(); }catch(e){} } try{ statusChart = new Chart(ctx, { type:'pie', data:{ labels, datasets:[{ data, backgroundColor:['#06b6d4','#16a34a','#ef4444'] }] }, options:{ responsive:true, maintainAspectRatio:false } }); }catch(e){ console.error('renderReports chart', e); } }
-
-      // Utilities
-      function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',''":"&#39;"}[c])); }
-
-      // initial render
-      showView('dashboard');
-
-      // Live interactions
-      document.getElementById('globalSearch')?.addEventListener('input', ()=>{ renderProjects(); renderDashboard(); }); document.getElementById('filterStatus')?.addEventListener('input', ()=>{ projectsPage=1; renderProjects(); }); document.getElementById('sortSelect')?.addEventListener('change', ()=>{ renderProjects(); });
-
-      // keyboard: close modal on Esc
-      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
-
-      // expose small API in dev only
-      try{ window.procrm = { getStore: ()=> JSON.parse(JSON.stringify(store)), save: ()=>{ writeStore(store); toast('Saved'); } }; }catch(e){}
-
-    }); // DOMContentLoaded
-  </script>
 </body>
 </html>
+
