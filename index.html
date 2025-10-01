@@ -1,164 +1,221 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Taha's Journey CRM</title>
-  <meta name="description" content="Professional single-file CRM — local-first with optional API hooks. Vercel-ready static build." />
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pro CRM — Black Theme (Vercel-stable)</title>
+<meta name="description" content="Professional single-file CRM — local-first with optional API hooks. Vercel-ready static build." />
 
-  <!-- Chart.js (UMD) - loaded before app script so `Chart` is a global -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+<!-- Chart.js (UMD) - loaded before app script so `Chart` is a global -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
 
-  <style>
-    :root{--bg:#020205;--panel:#0b0b0f;--muted:#9aa4b2;--accent:#06b6d4;--accent-2:#8b5cf6;--card-radius:14px;--success:#16a34a;--danger:#ef4444;--max-width:1200px}
-    *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#e6eef6}
-    html,body{height:100%;margin:0;background:linear-gradient(180deg,#000,#06060b);}
-    .app{max-width:var(--max-width);margin:20px auto;padding:18px;display:grid;grid-template-columns:260px 1fr;gap:18px}
-    .sidebar{background:linear-gradient(180deg,var(--panel),#07070a);border-radius:14px;padding:14px;display:flex;flex-direction:column;height:calc(100vh - 40px);position:sticky;top:20px}
-    .brand{display:flex;align-items:center;gap:10px;padding-bottom:6px}
-    .brand .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800}
-    .brand h2{margin:0;font-size:16px}
-    .nav{margin-top:12px;display:flex;flex-direction:column;gap:6px}
-    .navbutton{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;color:var(--muted);cursor:pointer;border:1px solid transparent}
-    .navbutton:focus{outline:2px solid rgba(6,182,212,0.18)}
-    .navbutton.active{background:linear-gradient(90deg, rgba(6,182,212,0.06), rgba(139,92,246,0.03));color:#fff;border-color:rgba(6,182,212,0.12)}
-    .collapse-btn{margin-top:auto;padding:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted);cursor:pointer}
-    header.topbar{grid-column:2/3;display:flex;align-items:center;justify-content:space-between;gap:12px}
-    .searchbar{display:flex;gap:8px;align-items:center;background:var(--panel);padding:8px;border-radius:12px;min-width:320px}
-    .searchbar input{background:transparent;border:0;color:inherit;outline:none;padding:6px}
-    .top-actions{display:flex;gap:10px;align-items:center}
-    main.workspace{background:transparent;border-radius:14px;padding:0 0 20px 0}
-    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-    .card{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.007));padding:14px;border-radius:var(--card-radius);border:1px solid rgba(255,255,255,0.03);box-shadow:0 10px 30px rgba(2,6,23,0.6)}
-    .kpi{display:flex;flex-direction:column;gap:6px}
-    .kpi .value{font-size:20px;font-weight:700}
-    .kpi .label{color:var(--muted);font-size:12px}
-    .projects-list{margin-top:12px}
-    .project-row{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)}
-    .status-chip{padding:6px 10px;border-radius:999px;font-size:12px}
-    .status-Ongoing{background:rgba(6,182,212,0.08);color:var(--accent)}
-    .status-Closed{background:rgba(22,163,74,0.08);color:var(--success)}
-    .status-Paused{background:rgba(239,68,68,0.06);color:var(--danger)}
-    .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
-    .modal{background:var(--panel);padding:18px;border-radius:12px;max-width:920px;width:100%;border:1px solid rgba(255,255,255,0.03)}
-    .modal h3{margin-top:0}
-    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    label{font-size:13px;color:var(--muted)}
-    input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
-    .dropzone{border:2px dashed rgba(255,255,255,0.03);padding:14px;border-radius:10px;text-align:center;color:var(--muted)}
-    .file-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);margin-top:8px}
-    .progress{height:6px;background:rgba(255,255,255,0.03);border-radius:6px;overflow:hidden}
-    .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
-    .toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:10px;z-index:80}
-    .toast{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#02111a;padding:10px 14px;border-radius:10px;min-width:180px}
-    @media (max-width:1000px){.app{grid-template-columns:80px 1fr}.navbutton span{display:none}.brand h2{display:none}.searchbar{min-width:180px}}
-    @media (max-width:700px){.app{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.grid{grid-template-columns:1fr}}
-    .muted{color:var(--muted)}
-    .flex{display:flex;gap:8px;align-items:center}
-    .btn{padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent-2));border:0;color:#02111a;font-weight:700;cursor:pointer}
-    .btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
-  </style>
+<style>
+:root{--bg:#020205;--panel:#0b0b0f;--muted:#9aa4b2;--accent:#06b6d4;--accent-2:#8b5cf6;--card-radius:14px;--success:#16a34a;--danger:#ef4444;--max-width:1200px}
+*{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;color:#e6eef6}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,#000,#06060b);}
+.app{max-width:var(--max-width);margin:20px auto;padding:18px;display:grid;grid-template-columns:260px 1fr;gap:18px}
+.sidebar{background:linear-gradient(180deg,var(--panel),#07070a);border-radius:14px;padding:14px;display:flex;flex-direction:column;height:calc(100vh - 40px);position:sticky;top:20px}
+.brand{display:flex;align-items:center;gap:10px;padding-bottom:6px}
+.brand .logo{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;font-weight:800}
+.brand h2{margin:0;font-size:16px}
+.nav{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.navbutton{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;color:var(--muted);cursor:pointer;border:1px solid transparent}
+.navbutton:focus{outline:2px solid rgba(6,182,212,0.18)}
+.navbutton.active{background:linear-gradient(90deg, rgba(6,182,212,0.06), rgba(139,92,246,0.03));color:#fff;border-color:rgba(6,182,212,0.12)}
+.collapse-btn{margin-top:auto;padding:8px;border-radius:10px;background:transparent;border:1px solid rgba(255,255,255,0.03);color:var(--muted);cursor:pointer}
+header.topbar{grid-column:2/3;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.searchbar{display:flex;gap:8px;align-items:center;background:var(--panel);padding:8px;border-radius:12px;min-width:320px}
+.searchbar input{background:transparent;border:0;color:inherit;outline:none;padding:6px}
+.top-actions{display:flex;gap:10px;align-items:center}
+main.workspace{background:transparent;border-radius:14px;padding:0 0 20px 0}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.007));padding:14px;border-radius:var(--card-radius);border:1px solid rgba(255,255,255,0.03);box-shadow:0 10px 30px rgba(2,6,23,0.6)}
+.kpi{display:flex;flex-direction:column;gap:6px}
+.kpi .value{font-size:20px;font-weight:700}
+.kpi .label{color:var(--muted);font-size:12px}
+.projects-list{margin-top:12px}
+.project-row{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.01);border:1px solid rgba(255,255,255,0.02)}
+.status-chip{padding:6px 10px;border-radius:999px;font-size:12px}
+.status-Ongoing{background:rgba(6,182,212,0.08);color:var(--accent)}
+.status-Closed{background:rgba(22,163,74,0.08);color:var(--success)}
+.status-Paused{background:rgba(239,68,68,0.06);color:var(--danger)}
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.6);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.modal{background:var(--panel);padding:18px;border-radius:12px;max-width:920px;width:100%;border:1px solid rgba(255,255,255,0.03)}
+.modal h3{margin-top:0}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+label{font-size:13px;color:var(--muted)}
+input,select,textarea{width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit}
+.dropzone{border:2px dashed rgba(255,255,255,0.03);padding:14px;border-radius:10px;text-align:center;color:var(--muted)}
+.file-item{display:flex;align-items:center;justify-content:space-between;padding:8px;border-radius:8px;background:rgba(255,255,255,0.01);margin-top:8px}
+.progress{height:6px;background:rgba(255,255,255,0.03);border-radius:6px;overflow:hidden}
+.progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));width:0%}
+.toasts{position:fixed;right:20px;bottom:20px;display:flex;flex-direction:column;gap:10px;z-index:80}
+.toast{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#02111a;padding:10px 14px;border-radius:10px;min-width:180px}
+@media (max-width:1000px){.app{grid-template-columns:80px 1fr}.navbutton span{display:none}.brand h2{display:none}.searchbar{min-width:180px}}
+@media (max-width:700px){.app{grid-template-columns:1fr}.sidebar{position:relative;height:auto}.grid{grid-template-columns:1fr}}
+.muted{color:var(--muted)}
+.flex{display:flex;gap:8px;align-items:center}
+.btn{padding:8px 12px;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--accent-2));border:0;color:#02111a;font-weight:700;cursor:pointer}
+.btn.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);color:var(--muted)}
+</style>
 </head>
 <body>
-  
-  <div class="app" role="application">
-    <aside class="sidebar" id="sidebar" aria-label="Main navigation">
-      <div class="brand"><div class="logo">PR</div><h2>Pro CRM</h2></div>
-      <nav class="nav" role="navigation" aria-label="Primary">
-        <div tabindex="0" class="navbutton active" data-view="dashboard">📊<span style="margin-left:8px">Dashboard</span></div>
-        <div tabindex="0" class="navbutton" data-view="clients">👥<span style="margin-left:8px">Clients</span></div>
-        <div tabindex="0" class="navbutton" data-view="projects">📁<span style="margin-left:8px">Projects</span></div>
-        <div tabindex="0" class="navbutton" data-view="uploads">⬆️<span style="margin-left:8px">Uploads</span></div>
-        <div tabindex="0" class="navbutton" data-view="reports">📈<span style="margin-left:8px">Reports</span></div>
-        <div tabindex="0" class="navbutton" data-view="settings">⚙️<span style="margin-left:8px">Settings</span></div>
-        <div tabindex="0" class="navbutton" data-view="logout">↩️<span style="margin-left:8px">Logout</span></div>
-      </nav>
-      <button class="collapse-btn" id="toggleSidebar" aria-expanded="true">Collapse</button>
-    </aside>
-    
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <header class="topbar">
-        <div class="searchbar" role="search" aria-label="Global search">
-          <input id="globalSearch" placeholder="Search clients, projects or tags..." />
-        </div>
-        <div class="top-actions">
-          <button id="addProjectBtn" class="btn">+ Add Project</button>
-          <div class="flex"><div style="width:36px;height:36px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2))"></div></div>
-        </div>
-      </header>
+<div class="app" role="application">
+<aside class="sidebar" id="sidebar" aria-label="Main navigation">
+<div class="brand"><div class="logo">PR</div><h2>Pro CRM</h2></div>
+<nav class="nav" role="navigation" aria-label="Primary">
+<div tabindex="0" class="navbutton active" data-view="dashboard">📊<span style="margin-left:8px">Dashboard</span></div>
+<div tabindex="0" class="navbutton" data-view="clients">👥<span style="margin-left:8px">Clients</span></div>
+<div tabindex="0" class="navbutton" data-view="projects">📁<span style="margin-left:8px">Projects</span></div>
+<div tabindex="0" class="navbutton" data-view="uploads">⬆️<span style="margin-left:8px">Uploads</span></div>
+<div tabindex="0" class="navbutton" data-view="reports">📈<span style="margin-left:8px">Reports</span></div>
+<div tabindex="0" class="navbutton" data-view="settings">⚙️<span style="margin-left:8px">Settings</span></div>
+<div tabindex="0" class="navbutton" data-view="logout">↩️<span style="margin-left:8px">Logout</span></div>
+</nav>
+<button class="collapse-btn" id="toggleSidebar" aria-expanded="true">Collapse</button>
+</aside>
 
-      <main class="workspace" id="workspace" tabindex="0">
-        <section id="view-dashboard">
-          <div class="grid">
-            <div class="card kpi"><div class="label muted">Total clients</div><div class="value" id="kpi-clients">0</div></div>
-            <div class="card kpi"><div class="label muted">Active projects</div><div class="value" id="kpi-active">0</div></div>
-            <div class="card kpi"><div class="label muted">Revenue (this month)</div><div class="value" id="kpi-revenue">$0</div></div>
-            <div class="card"><canvas id="earningsChart" height="140"></canvas></div>
-            <div class="card" style="grid-column:span 2">
-              <h3 style="margin-top:0">Recent activity</h3>
-              <div id="activityFeed" aria-live="polite"></div>
-            </div>
-            <div class="card" style="grid-column:span 3">
-              <h3 style="margin-top:0">Projects snapshot</h3>
-              <div id="projectsSnapshot" class="projects-list"></div>
-            </div>
-          </div>
-        </section>
+<div style="display:flex;flex-direction:column;gap:12px">
+<header class="topbar">
+<div class="searchbar" role="search" aria-label="Global search">
+<input id="globalSearch" placeholder="Search clients, projects or tags..." />
+</div>
+<div class="top-actions">
+<button id="addProjectBtn" class="btn">+ Add Project</button>
+<div class="flex"><div style="width:36px;height:36px;border-radius:999px;background:linear-gradient(90deg,var(--accent),var(--accent-2))"></div></div>
+</div>
+</header>
 
-        <section id="view-clients" style="display:none">
-          <div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Clients</h3><div><button id="importClientsBtn" class="btn ghost">Import JSON</button> <button id="addClientBtn" class="btn">+ Client</button></div></div>
-            <div id="clientsList" style="margin-top:12px"></div>
-          </div>
-        </section>
+<main class="workspace" id="workspace" tabindex="0">
+<section id="view-dashboard">
+<div class="grid">
+<div class="card kpi"><div class="label muted">Total clients</div><div class="value" id="kpi-clients">0</div></div>
+<div class="card kpi"><div class="label muted">Active projects</div><div class="value" id="kpi-active">0</div></div>
+<div class="card kpi"><div class="label muted">Revenue (this month)</div><div class="value" id="kpi-revenue">$0</div></div>
+<div class="card"><canvas id="earningsChart" height="140"></canvas></div>
+<div class="card" style="grid-column:span 2">
+<h3 style="margin-top:0">Recent activity</h3>
+<div id="activityFeed" aria-live="polite"></div>
+</div>
+<div class="card" style="grid-column:span 3">
+<h3 style="margin-top:0">Projects snapshot</h3>
+<div id="projectsSnapshot" class="projects-list"></div>
+</div>
+</div>
+</section>
 
-        <section id="view-projects" style="display:none">
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
-            <input id="filterStatus" aria-label="Filter status" placeholder="Filter status (Ongoing/Closed/Paused)" />
-            <select id="sortSelect"><option value="updatedAt">Sort: Recent</option><option value="budgetEarned">Sort: Budget</option></select>
-            <button id="exportBtn" class="btn ghost">Export CSV</button>
-          </div>
-          <div class="card">
-            <div id="projectsList" style="min-height:160px"></div>
-            <div id="pagination" style="margin-top:10px;display:flex;gap:8px"></div>
-          </div>
-        </section>
+<section id="view-clients" style="display:none">
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:center"><h3>Clients</h3><div><button id="importClientsBtn" class="btn ghost">Import JSON</button> <button id="addClientBtn" class="btn">+ Client</button></div></div>
+<div id="clientsList" style="margin-top:12px"></div>
+</div>
+</section>
 
-        <section id="view-uploads" style="display:none">
-          <div class="card"><h3>Uploads</h3>
-            <div id="uploadsArea" style="margin-top:8px">
-              <div class="dropzone" id="dropzone">Drag & drop files here or <label style="color:var(--accent);cursor:pointer"><input type="file" id="fileInput" multiple style="display:none">browse</label></div>
-              <div id="uploadList"></div>
-            </div>
-          </div>
-        </section>
+<section id="view-projects" style="display:none">
+<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+<input id="filterStatus" aria-label="Filter status" placeholder="Filter status (Ongoing/Closed/Paused)" />
+<select id="sortSelect"><option value="updatedAt">Sort: Recent</option><option value="budgetEarned">Sort: Budget</option></select>
+<button id="exportBtn" class="btn ghost">Export CSV</button>
+</div>
+<div class="card">
+<div id="projectsList" style="min-height:160px"></div>
+<div id="pagination" style="margin-top:10px;display:flex;gap:8px"></div>
+</div>
+</section>
 
-        <section id="view-reports" style="display:none">
-          <div class="card"><h3>Reports</h3>
-            <canvas id="statusChart" height="120" style="margin-top:12px"></canvas>
-          </div>
-        </section>
+<section id="view-uploads" style="display:none">
+<div class="card"><h3>Uploads</h3>
+<div id="uploadsArea" style="margin-top:8px">
+<div class="dropzone" id="dropzone">Drag & drop files here or <label style="color:var(--accent);cursor:pointer"><input type="file" id="fileInput" multiple style="display:none">browse</label></div>
+<div id="uploadList"></div>
+</div>
+</div>
+</section>
 
-        <section id="view-settings" style="display:none">
-          <div class="card"><h3>Settings</h3>
-            <div class="muted">Local-only mode is enabled. Connect a backend in settings for cloud sync.</div>
-            <div style="margin-top:12px"><button id="clearAllBtn" class="btn ghost">Clear local data</button></div>
-          </div>
-        </section>
+<section id="view-reports" style="display:none">
+<div class="card"><h3>Reports</h3>
+<canvas id="statusChart" height="120" style="margin-top:12px"></canvas>
+</div>
+</section>
 
-      </main>
-    </div>
+<section id="view-settings" style="display:none">
+<div class="card"><h3>Settings</h3>
+<div class="muted">Local-only mode is enabled. Connect a backend in settings for cloud sync.</div>
+<div style="margin-top:12px"><button id="clearAllBtn" class="btn ghost">Clear local data</button></div>
+</div>
+</section>
 
-    <div class="toasts" id="toasts" aria-live="polite"></div>
-  </div>
+</main>
+</div>
 
-  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
-    <div class="modal" role="document" id="modalContent">
-      <button id="closeModal" class="btn ghost" style="float:right">Close</button>
-      <div id="modalBody"></div>
-    </div>
-  </div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+</div>
 
-  <script>
+<div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-hidden="true">
+<div class="modal" role="document" id="modalContent">
+<button id="closeModal" class="btn ghost" style="float:right">Close</button>
+<div id="modalBody"></div>
+</div>
+</div>
+
+<script>
+    // Wrap entire app in DOMContentLoaded so Vercel's static deploy / pre-render doesn't execute browser-only APIs
+    document.addEventListener('DOMContentLoaded', function(){
+      // ---------- sample data & storage ----------
+      const sampleData = {
+        clients: [{id:'client_01',name:'Acme Corp',location:{city:'Karachi',country:'Pakistan'},contactEmail:'contact@acme.com',phone:'+92-300-1234567',notes:'Repeat client'}],
+        projects: [{id:'proj_01',clientId:'client_01',title:'Upwork Website Redesign',description:'Landing page and portfolio redesign',startDate:'2025-09-01',endDate:null,budgetEarned:450,status:'Ongoing',tags:['web','design'],attachments:[{id:'file_01',name:'proposal.pdf',type:'application/pdf',size:234520,url:'/uploads/proposal.pdf',uploadedAt:'2025-09-02T12:00:00Z'}],createdAt:'2025-09-01T10:00:00Z',updatedAt:'2025-09-05T09:30:00Z'}]
+      };
+
+      const STORAGE_KEY = 'procrm_v1';
+      function readStore(){ try{ const s = localStorage.getItem(STORAGE_KEY); if(s) return JSON.parse(s); return JSON.parse(JSON.stringify(sampleData)); }catch(e){ console.error('readStore',e); return JSON.parse(JSON.stringify(sampleData)); } }
+      function writeStore(obj){ try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(obj)); }catch(e){ console.error('writeStore',e); } }
+
+      // IndexedDB helper with graceful fallback to in-memory store if IndexedDB not available
+      const DB_NAME = 'procrm_files_v1'; const STORE = 'files';
+      let inMemoryFileStore = [];
+      function openDb(){ return new Promise((resolve,reject)=>{ if(!('indexedDB' in window)){ resolve(null); return; } try{ const r = indexedDB.open(DB_NAME,1); r.onupgradeneeded = ()=>{ const db = r.result; if(!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE,{keyPath:'id'}); }; r.onsuccess = ()=>resolve(r.result); r.onerror = ()=>reject(r.error); }catch(err){ reject(err); } }); }
+
+      async function saveFileBlob(fileMeta, arrayBuffer){ try{ const db = await openDb(); if(!db){ // fallback
+            inMemoryFileStore.push({...fileMeta, data: arrayBuffer}); return; }
+          const tx = db.transaction(STORE,'readwrite'); tx.objectStore(STORE).put({...fileMeta, data: arrayBuffer}); return await new Promise((res,rej)=>{ tx.oncomplete = ()=>res(); tx.onerror = ()=>rej(tx.error); }); }catch(e){ console.error('saveFileBlob',e); throw e; } }
+
+      async function getFilesForProject(projectId){ try{ const db = await openDb(); if(!db){ return inMemoryFileStore.filter(x=>x.projectId===projectId); } const tx = db.transaction(STORE,'readonly'); const storeObj = tx.objectStore(STORE); const res = []; return await new Promise((resolve,reject)=>{ const cursor = storeObj.openCursor(); cursor.onsuccess = (ev)=>{ const cur = ev.target.result; if(!cur){ resolve(res); return; } if(cur.value.projectId === projectId) res.push(cur.value); cur.continue(); }; cursor.onerror = ()=>reject(cursor.error); }); }catch(e){ console.error('getFilesForProject',e); return []; } }
+
+      // ---------- UI bindings ----------
+      const navButtons = document.querySelectorAll('.navbutton');
+      const views = {dashboard: document.getElementById('view-dashboard'), clients: document.getElementById('view-clients'), projects: document.getElementById('view-projects'), uploads: document.getElementById('view-uploads'), reports: document.getElementById('view-reports'), settings: document.getElementById('view-settings') };
+      const sidebar = document.getElementById('sidebar'); const toggleSidebar = document.getElementById('toggleSidebar');
+      const toasts = document.getElementById('toasts');
+      let store = readStore();
+
+      // Safe dev hook (only in browser)
+      try{ window.procrmStore = store; }catch(e){}
+
+      navButtons.forEach(btn=>{ btn.addEventListener('click', ()=>{ navButtons.forEach(b=>b.classList.remove('active')); btn.classList.add('active'); showView(btn.dataset.view); }); btn.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' ') btn.click(); }); });
+      function showView(name){ Object.values(views).forEach(v=>{ if(v) v.style.display='none'; }); const view = views[name]; if(view) view.style.display='block'; renderAll(); }
+      toggleSidebar.addEventListener('click', ()=>{ const collapsed = sidebar.classList.toggle('collapsed'); toggleSidebar.textContent = collapsed ? 'Expand' : 'Collapse'; });
+
+      function toast(msg, ms=3000){ const t = document.createElement('div'); t.className='toast'; t.textContent = msg; toasts.appendChild(t); setTimeout(()=>{ t.style.opacity=0; setTimeout(()=>t.remove(),300); }, ms); }
+
+      // ---------- Dashboard & charts ----------
+      function renderAll(){ renderDashboard(); renderClients(); renderProjects(); renderReports(); }
+      function renderDashboard(){ const kClients = store.clients.length; const kActive = store.projects.filter(p=>p.status==='Ongoing').length; const revenue = store.projects.reduce((s,p)=>s + (Number(p.budgetEarned)||0),0); setText('#kpi-clients', kClients); setText('#kpi-active', kActive); setText('#kpi-revenue', '$'+revenue); renderActivity(); renderSnapshot(); renderEarningsChart(); }
+      function setText(sel, txt){ const el = document.querySelector(sel); if(el) el.textContent = txt; }
+      function renderActivity(){ const feed = document.getElementById('activityFeed'); if(!feed) return; feed.innerHTML=''; const recent = [...store.projects].sort((a,b)=> new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)).slice(0,6); recent.forEach(p=>{ const d = document.createElement('div'); d.className='muted'; d.textContent = `${p.title} — ${p.status} — $${p.budgetEarned||0}`; feed.appendChild(d); }); }
+      function renderSnapshot(){ const snap = document.getElementById('projectsSnapshot'); if(!snap) return; snap.innerHTML=''; const snapList = store.projects.slice(0,6); snapList.forEach(p=>{ const el = document.createElement('div'); el.className='project-row'; el.innerHTML = `<div><strong>${escapeHtml(p.title)}</strong><div class='muted'>${escapeHtml(getClientName(p.clientId))} · ${p.tags ? escapeHtml((p.tags||[]).join(', ')):''}</div></div><div class='muted'>$${p.budgetEarned||0}</div>`; snap.appendChild(el); }); }
+      function generateLastMonths(n){ const months=[]; const d = new Date(); for(let i=n-1;i>=0;i--){ const dt = new Date(d.getFullYear(), d.getMonth()-i, 1); months.push({key: dt.toISOString().slice(0,7), label: dt.toLocaleString(undefined,{month:'short',year:'numeric'})}); } return months; }
+      function monthlyRevenueForKey(monthKey){ return store.projects.reduce((s,p)=>{ const dateStr = p.createdAt || p.startDate || p.updatedAt; if(!dateStr) return s; try{ const d = new Date(dateStr); if(isNaN(d)) return s; const k = d.toISOString().slice(0,7); if(k === monthKey) return s + (Number(p.budgetEarned)||0); return s; }catch(e){ return s; } },0); }
+
+      function renderEarningsChart(){ const canvas = document.getElementById('earningsChart'); if(!canvas) return; const ctx = canvas.getContext('2d'); const months = generateLastMonths(6); const labels = months.map(m=>m.label); const dataPoints = months.map(m=>monthlyRevenueForKey(m.key)); if(window.earningsChart && typeof window.earningsChart.destroy === 'function'){ try{ window.earningsChart.destroy(); }catch(e){ console.warn('chart destroy failed',e); } } try{ window.earningsChart = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: 'Earnings', data: dataPoints, fill: true, tension: 0.3, backgroundColor: 'rgba(6,182,212,0.08)', borderColor: '#06b6d4', pointRadius: 3 }] }, options: { plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false, scales:{ x:{ grid:{display:false}, ticks:{ color: '#9aa4b2' } }, y:{ beginAtZero:true, ticks:{ color:'#9aa4b2' } } } } }); }catch(e){ console.error('renderEarningsChart', e); }
+      }
+
+      // ---------- Clients ----------
+      function renderClients(){ const el = document.getElementById('clientsList'); if(!el) return; el.innerHTML=''; store.clients.forEach(c=>{ const row = document.createElement('div'); row.className='project-row'; row.innerHTML = `<div><strong>${escapeHtml(c.name)}</strong><div class='muted'>${escapeHtml(c.location?.city||'')}, ${escapeHtml(c.location?.country||'')}</div></div><div class='flex'><button class='btn ghost' data-id='${c.id}' data-action='edit-client'>Edit</button><button class='btn ghost' data-id='${c.id}' data-action='delete-client'>Delete</button></div>`; el.appendChild(row); }); }
+      function getClientName(id){ const c = store.clients.find(x=>x.id===id); return c? c.name : ''; }
+
+      // ---------- Projects ----------
+      let projectsPage = 1; const PAGE_SIZE = 6;
+      function renderProjects(){ const container = document.getElementById('projectsList'); if(!container) return; container.innerHTML=''; const q = (document.getElementById('globalSearch')?.value || '').trim().toLowerCase(); const statusF = (document.getElementById('filterStatus')?.value || '').trim(); const sortBy = (document.getElementById('sortSelect')?.value || 'updatedAt'); let list = store.projects.slice(); if(q) list = list.filter(p=> p.title.toLowerCase().includes(q) || (p.tags||[]).join(' ').toLowerCase().includes(q) || getClientName(p.clientId).toLowerCase().includes(q)); if(statusF) list = list.filter(p=>p.status.toLowerCase() === statusF.toLowerCase()); if(sortBy==='budgetEarned') list.sort((a,b)=>(Number(b.budgetEarned)||0)-(Number(a.budgetEarned)||0)); else list.sort((a,b)=> new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)); const total = list.length; const pages = Math.max(1,Math.ceil(total/PAGE_SIZE)); projectsPage = Math.min(projectsPage, pages); const pageItems = list.slice((projectsPage-1)*PAGE_SIZE, projectsPage*PAGE_SIZE); pageItems.forEach(p=>{ const row = document.createElement('div'); row.className='project-row'; const tags = (p.tags||[]).slice(0,3).join(', '); row.innerHTML = `<div><strong>${escapeHtml(p.title)}</strong><div class='muted'>${escapeHtml(getClientName(p.clientId))} · ${escapeHtml(tags)}</div></div><div class='flex'><div class='status-chip status-${escapeHtml(p.status)}'>${escapeHtml(p.status)}</div><div class='muted'>$${p.budgetEarned||0}</div><button class='btn ghost' data-id='${p.id}' data-action='edit-project'>Edit</button></div>`; container.appendChild(row); }); const pag = document.getElementById('pagination'); if(!pag) return; pag.innerHTML=''; if(pages>1){ const prev = document.createElement('button'); prev.className='btn ghost'; prev.textContent='Prev'; prev.disabled = projectsPage===1; prev.onclick=()=>{ projectsPage--; renderProjects(); }; pag.appendChild(prev); const info = document.createElement('div'); info.className='muted'; info.textContent = `Page ${projectsPage} / ${pages}`; pag.appendChild(info); const next = document.createElement('button'); next.className='btn ghost'; next.textContent='Next'; next.disabled = projectsPage===pages; next.onclick=()=>{ projectsPage++; renderProjects(); }; pag.appendChild(next); }
 document.addEventListener('DOMContentLoaded', function () {
   console.log('Pro CRM booting');
 
@@ -491,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function () {
           catch (e) { toast('Upload failed: ' + file.name); }
         };
         reader.readAsArrayBuffer(file);
-      }
+}
     }, 150);
   }
 
@@ -531,12 +588,58 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+      // ---------- Uploads ----------
+      const dropzone = document.getElementById('dropzone'); const fileInput = document.getElementById('fileInput'); const uploadList = document.getElementById('uploadList');
+      const ALLOWED = ['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','text/csv','image/jpeg','image/png','application/zip','application/msword'];
+      if(dropzone){ dropzone.addEventListener('dragover', e=>{ e.preventDefault(); dropzone.style.borderColor = 'rgba(6,182,212,0.6)'; }); dropzone.addEventListener('dragleave', ()=>{ dropzone.style.borderColor = ''; }); dropzone.addEventListener('drop', e=>{ e.preventDefault(); dropzone.style.borderColor=''; handleFiles(e.dataTransfer.files); }); }
+      if(fileInput) fileInput.addEventListener('change', ()=>handleFiles(fileInput.files));
+      function handleFiles(list){ if(!list) return; for(const f of list){ if(f.size > 10*1024*1024){ toast('File too large: '+f.name); continue } if(!ALLOWED.includes(f.type) && !f.name.match(/\.docx$|\.xlsx$|\.zip$/i)){ toast('Unsupported file type: '+f.name); continue } simulateUpload(f); } }
+      async function simulateUpload(file){ const id = 'file_'+Date.now()+Math.random().toString(36).slice(2,8); const item = document.createElement('div'); item.className='file-item'; item.innerHTML = `<div><strong>${escapeHtml(file.name)}</strong><div class='muted'>${(file.size/1024).toFixed(1)} KB</div></div><div style='width:220px'><div class='progress'><i></i></div></div>`; if(uploadList) uploadList.appendChild(item); const bar = item.querySelector('.progress > i'); let pct = 0; const step = Math.max(2, Math.round(100 / (5 + Math.random()*5)) ); const timer = setInterval(()=>{ pct = Math.min(100, pct + step); if(bar) bar.style.width = pct+'%'; if(pct>=100){ clearInterval(timer); const reader = new FileReader(); reader.onload = async ()=>{ const arr = reader.result; try{ await saveFileBlob({id,projectId:null,name:file.name,type:file.type,size:file.size,uploadedAt:new Date().toISOString()}, arr); toast('Uploaded: '+file.name); }catch(e){ toast('Upload failed: '+file.name); } }; reader.readAsArrayBuffer(file); } }, 150); }
+
+      // ---------- Modals & forms ----------
+      const modal = document.getElementById('modalBackdrop'); const modalBody = document.getElementById('modalBody'); const closeModal = document.getElementById('closeModal');
+      function openModal(html){ if(!modal || !modalBody) return; modalBody.innerHTML = html; modal.style.display = 'flex'; modal.setAttribute('aria-hidden','false'); const focusEl = modal.querySelector('input,button,select,textarea'); if(focusEl) focusEl.focus(); }
+      function close(){ if(!modal) return; modal.style.display='none'; modal.setAttribute('aria-hidden','true'); }
+      if(closeModal) closeModal.addEventListener('click', close);
+
+      // Add client
+      const addClientBtn = document.getElementById('addClientBtn'); if(addClientBtn) addClientBtn.addEventListener('click', ()=>{ openModal(clientFormHTML()); document.getElementById('clientForm')?.addEventListener('submit', handleClientSave); });
+      function clientFormHTML(c){ const data = c || {id:'client_'+Date.now(),name:'',location:{city:'',country:''},contactEmail:'',phone:'',notes:''}; return `<h3>${c?'Edit':'Add'} client</h3><form id='clientForm'><div class='form-grid'><label>Company name<input name='name' value='${escapeHtml(data.name)}' required></label><label>City<input name='city' value='${escapeHtml(data.location.city)}'></label><label>Country<input name='country' value='${escapeHtml(data.location.country)}'></label><label>Email<input name='contactEmail' value='${escapeHtml(data.contactEmail)}'></label><label>Phone<input name='phone' value='${escapeHtml(data.phone)}'></label><label style='grid-column:1/-1'>Notes<textarea name='notes'>${escapeHtml(data.notes)}</textarea></label></div><div style='margin-top:12px'><button type='submit' class='btn'>Save client</button></div></form>`; }
+      function handleClientSave(e){ e.preventDefault(); const f = new FormData(e.target); const id = 'client_'+Date.now(); const obj = { id, name: f.get('name'), location:{city:f.get('city'), country:f.get('country')}, contactEmail:f.get('contactEmail'), phone:f.get('phone'), notes:f.get('notes') }; store.clients.push(obj); writeStore(store); close(); toast('Client saved'); renderAll(); }
+
+      // Add project
+      const addProjectBtn = document.getElementById('addProjectBtn'); if(addProjectBtn) addProjectBtn.addEventListener('click', ()=>{ openModal(projectFormHTML()); setTimeout(()=>{ document.getElementById('projectForm')?.addEventListener('submit', handleProjectSave); },50); });
+      function projectFormHTML(p){ const proj = p || {id:'proj_'+Date.now(),clientId:'',title:'',description:'',startDate:'',endDate:'',budgetEarned:0,status:'Ongoing',tags:''}; const clientOptions = store.clients.map(c=>`<option value='${c.id}'>${escapeHtml(c.name)}</option>`).join(''); return `<h3>${p?'Edit':'Add'} project</h3><form id='projectForm'><div class='form-grid'><label>Client<select name='clientId' required><option value=''>Select client</option>${clientOptions}</select></label><label>Title<input name='title' value='${escapeHtml(proj.title)}' required></label><label>Start date<input type='date' name='startDate' value='${proj.startDate||''}'></label><label>End date<input type='date' name='endDate' value='${proj.endDate||''}'></label><label>Budget earned<input type='number' name='budgetEarned' value='${proj.budgetEarned||0}'></label><label>Status<select name='status'><option>Ongoing</option><option>Closed</option><option>Paused</option></select></label><label style='grid-column:1/-1'>Description<textarea name='description'>${escapeHtml(proj.description)}</textarea></label><label style='grid-column:1/-1'>Tags (comma)<input name='tags' value='${proj.tags? escapeHtml((proj.tags||[]).join(', ')) : '' }'></label></div><div style='margin-top:12px'><button class='btn' type='submit'>Save project</button></div></form>`; }
+      function handleProjectSave(e){ e.preventDefault(); const f = new FormData(e.target); const id = 'proj_'+Date.now(); const obj = { id, clientId:f.get('clientId'), title:f.get('title'), description:f.get('description'), startDate:f.get('startDate')||'', endDate:f.get('endDate')||null, budgetEarned: Number(f.get('budgetEarned')||0), status:f.get('status'), tags: (f.get('tags')||'').split(',').map(s=>s.trim()).filter(Boolean), attachments:[], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }; store.projects.push(obj); writeStore(store); close(); toast('Project saved'); renderAll(); }
+
+      // Export CSV
+      const exportBtn = document.getElementById('exportBtn'); if(exportBtn) exportBtn.addEventListener('click', ()=>{ const hdr = ['id','clientId','title','description','startDate','endDate','budgetEarned','status','tags','createdAt','updatedAt']; const rows = store.projects.map(p=> hdr.map(h=> '"'+String(p[h]||'').replace(/"/g,'""')+'"').join(',')); const csv = hdr.join(',') + "
+" + rows.join("
+"); const blob = new Blob([csv],{type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='projects.csv'; a.click(); URL.revokeObjectURL(url); toast('CSV exported'); });
+
+      // Clear data
+      const clearBtn = document.getElementById('clearAllBtn'); if(clearBtn) clearBtn.addEventListener('click', ()=>{ if(confirm('Clear all local data?')){ store = {clients:[],projects:[]}; writeStore(store); toast('Local data cleared'); renderAll(); } });
+
+      // Reports chart
+      let statusChart = null;
+      function renderReports(){ const ctx = document.getElementById('statusChart'); if(!ctx) return; const counts = {Ongoing:0,Closed:0,Paused:0}; store.projects.forEach(p=> counts[p.status] = (counts[p.status]||0)+1 ); const data = Object.values(counts); const labels = Object.keys(counts); if(statusChart && typeof statusChart.destroy === 'function'){ try{ statusChart.destroy(); }catch(e){} } try{ statusChart = new Chart(ctx, { type:'pie', data:{ labels, datasets:[{ data, backgroundColor:['#06b6d4','#16a34a','#ef4444'] }] }, options:{ responsive:true, maintainAspectRatio:false } }); }catch(e){ console.error('renderReports chart', e); } }
+
+      // Utilities
+      function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',''":"&#39;"}[c])); }
+
+      // initial render
+      showView('dashboard');
+
+      // Live interactions
+      document.getElementById('globalSearch')?.addEventListener('input', ()=>{ renderProjects(); renderDashboard(); }); document.getElementById('filterStatus')?.addEventListener('input', ()=>{ projectsPage=1; renderProjects(); }); document.getElementById('sortSelect')?.addEventListener('change', ()=>{ renderProjects(); });
+
+      // keyboard: close modal on Esc
+      window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
+
+      // expose small API in dev only
+      try{ window.procrm = { getStore: ()=> JSON.parse(JSON.stringify(store)), save: ()=>{ writeStore(store); toast('Saved'); } }; }catch(e){}
+
+    }); // DOMContentLoaded
+  </script>
 </body>
 </html>
-
-
-
-
-
-
-
